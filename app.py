@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import plotly.graph_objects as go
 import random, os, shutil
@@ -372,9 +373,372 @@ def render_waste_card(w):
 
 
 # ══════════════════════════════════════
-# SVG 인터랙티브 지도 (클릭 → 종량제 봉투 가격 팝업)
+# SVG 인터랙티브 지도 (components.html → JS 완전 동작)
 # ══════════════════════════════════════
 def build_svg_map(df_amt, sel, bag_prices):
+    GU_PATHS = {
+        "도봉구":"M270,28 L340,22 L365,55 L345,80 L300,85 L268,65 Z",
+        "노원구":"M340,22 L425,26 L440,62 L405,88 L365,82 L365,55 Z",
+        "강북구":"M240,62 L270,28 L268,65 L300,85 L295,108 L265,115 L242,95 Z",
+        "성북구":"M265,115 L295,108 L350,108 L372,130 L348,152 L310,158 L278,148 Z",
+        "중랑구":"M365,82 L405,88 L428,110 L408,140 L378,148 L372,130 L350,108 Z",
+        "동대문구":"M310,158 L348,152 L372,130 L378,148 L360,170 L330,175 L308,170 Z",
+        "광진구":"M378,148 L408,140 L435,162 L418,192 L388,198 L360,188 L360,170 Z",
+        "성동구":"M308,170 L330,175 L360,170 L360,188 L345,210 L315,215 L292,200 Z",
+        "종로구":"M198,72 L240,62 L242,95 L265,115 L278,148 L250,162 L218,155 L195,132 L188,102 Z",
+        "중구":"M218,155 L250,162 L278,148 L310,158 L308,170 L292,200 L268,210 L240,200 L220,182 Z",
+        "용산구":"M220,182 L240,200 L268,210 L260,238 L238,250 L210,240 L200,218 Z",
+        "은평구":"M115,72 L198,72 L188,102 L195,132 L165,148 L128,140 L105,108 Z",
+        "서대문구":"M165,148 L195,132 L218,155 L220,182 L200,218 L172,222 L148,202 L140,172 Z",
+        "마포구":"M96,178 L140,172 L148,202 L172,222 L162,255 L130,268 L88,252 L75,218 Z",
+        "강서구":"M38,248 L88,252 L130,268 L125,318 L88,340 L42,318 L28,282 Z",
+        "양천구":"M88,252 L130,268 L148,315 L130,342 L88,340 L88,310 Z",
+        "영등포구":"M130,268 L162,255 L188,268 L198,305 L182,342 L148,348 L130,342 L148,315 Z",
+        "구로구":"M88,310 L130,342 L148,348 L140,378 L100,385 L72,362 L68,330 Z",
+        "금천구":"M100,385 L140,378 L162,392 L158,422 L122,428 L98,408 Z",
+        "동작구":"M182,342 L215,330 L248,348 L242,382 L208,392 L182,378 L170,358 Z",
+        "관악구":"M148,348 L182,342 L170,358 L182,378 L208,392 L200,422 L162,428 L158,422 L162,392 L140,378 Z",
+        "서초구":"M248,348 L295,335 L325,355 L322,400 L285,415 L252,408 L242,382 Z",
+        "강남구":"M325,355 L385,348 L418,360 L422,415 L388,432 L348,440 L322,420 L322,400 Z",
+        "송파구":"M418,228 L482,222 L508,268 L492,332 L448,358 L418,360 L385,348 L388,305 L405,272 Z",
+        "강동구":"M482,165 L545,158 L568,200 L552,258 L508,268 L482,222 L440,205 L435,162 Z",
+    }
+    LABEL_POS = {
+        "도봉구":(308,55),"노원구":(395,55),"강북구":(268,82),
+        "성북구":(318,132),"중랑구":(395,118),"동대문구":(340,163),
+        "광진구":(400,172),"성동구":(328,196),"종로구":(225,115),
+        "중구":(260,178),"용산구":(232,218),"은평구":(148,108),
+        "서대문구":(175,185),"마포구":(122,225),"강서구":(78,295),
+        "양천구":(112,300),"영등포구":(162,308),"구로구":(108,348),
+        "금천구":(130,402),"동작구":(212,362),"관악구":(175,388),
+        "서초구":(282,378),"강남구":(368,400),"송파구":(448,295),
+        "강동구":(498,215),
+    }
+
+    # ── 데이터 JSON 생성 ──
+    tip_parts = []
+    for gu, row in df_amt.iterrows():
+        lc = row["등급"]
+        tip_parts.append(
+            f'"{gu}":{{"amt":{row["1인당"]},"tot":{row["총량"]},'
+            f'"pop":{int(row["주민수"])},"lbl":"{LBL[lc]}",'
+            f'"clr":"{CLR[lc]}","emj":"{EMJ[lc]}"}}'
+        )
+    tip_json = "{" + ",".join(tip_parts) + "}"
+
+    bag_parts = []
+    for gu, prices in bag_prices.items():
+        items_str = ",".join(f'"{k}":{v}' for k, v in prices.items())
+        bag_parts.append(f'"{gu}":{{{items_str}}}')
+    bag_json = "{" + ",".join(bag_parts) + "}"
+
+    # ── SVG paths & labels ──
+    paths = []; labels = []
+    for gu, pd_ in GU_PATHS.items():
+        if gu in df_amt.index:
+            lc   = df_amt.loc[gu,"등급"]
+            fill = "#2C5282" if gu == sel else CLR[lc]
+            sw   = "3" if gu == sel else "1.5"
+        else:
+            fill, sw = "#DDD","1.5"
+        paths.append(
+            f'<path d="{pd_}" fill="{fill}" stroke="white" stroke-width="{sw}" '
+            f'class="gu-path" data-gu="{gu}" />'
+        )
+    for gu, (lx, ly) in LABEL_POS.items():
+        labels.append(
+            f'<text x="{lx}" y="{ly}" text-anchor="middle" font-size="9.5" '
+            f'font-family="sans-serif" fill="white" pointer-events="none" '
+            f'font-weight="700">{gu[:3]}</text>'
+        )
+    svg_body = "\n".join(paths) + "\n" + "\n".join(labels)
+
+    # ── 완전 독립 HTML 반환 (components.html 용) ──
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+* {{ margin:0; padding:0; box-sizing:border-box; font-family: 'Nanum Gothic', sans-serif; }}
+body {{ background:#fff; overflow-x:hidden; }}
+
+.wrap {{
+  padding: 10px 14px 12px;
+  background: white;
+  border-radius: 14px;
+}}
+
+.hint {{
+  display:flex; align-items:center; gap:8px;
+  margin-bottom:10px; flex-wrap:wrap;
+}}
+.hint-main {{ font-size:13px; font-weight:800; color:#1A202C; }}
+.hint-badge {{
+  background:#EBF8F3; color:#2D9A6B;
+  padding:3px 12px; border-radius:8px;
+  font-size:12px; font-weight:700;
+}}
+.hint-sub {{ font-size:11px; color:#999; margin-left:auto; }}
+
+svg {{ display:block; border-radius:10px; cursor:pointer; width:100%; }}
+.gu-path {{ transition: filter 0.15s, stroke-width 0.15s; }}
+.gu-path:hover {{ filter:brightness(0.82); stroke:#1A202C !important; stroke-width:2.5px !important; }}
+
+/* 호버 툴팁 */
+#tip {{
+  display:none;
+  position:fixed;
+  background:white;
+  border:2px solid #3ECF8E;
+  border-radius:12px;
+  padding:10px 14px;
+  font-size:12px;
+  line-height:1.8;
+  box-shadow:0 4px 18px rgba(0,0,0,0.18);
+  pointer-events:none;
+  z-index:100;
+  min-width:170px;
+  max-width:220px;
+}}
+
+/* 범례 */
+.legend {{
+  display:flex; gap:7px; margin-top:10px; flex-wrap:wrap;
+}}
+.legend span {{
+  padding:3px 9px; border-radius:7px;
+  font-size:11px; font-weight:700; color:white;
+}}
+
+/* 팝업 오버레이 */
+#overlay {{
+  display:none;
+  position:fixed;
+  top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.5);
+  z-index:200;
+  align-items:center;
+  justify-content:center;
+}}
+#overlay.show {{ display:flex; }}
+
+/* 팝업 카드 */
+#popup {{
+  background:white;
+  border-radius:18px;
+  width:min(420px, 94vw);
+  max-height:90vh;
+  overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,0.3);
+  animation: fadeUp 0.2s ease;
+}}
+@keyframes fadeUp {{
+  from {{ transform:translateY(20px); opacity:0; }}
+  to   {{ transform:translateY(0);    opacity:1; }}
+}}
+
+#popup-header {{
+  padding:18px 20px 12px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  border-radius:18px 18px 0 0;
+}}
+#popup-title  {{ font-size:16px; font-weight:800; color:#1A202C; }}
+#popup-sub    {{ font-size:11px; color:#718096; margin-top:3px; }}
+#close-btn {{
+  background:#F0F4F8;
+  border:none;
+  border-radius:8px;
+  width:30px; height:30px;
+  font-size:16px;
+  cursor:pointer;
+  color:#555;
+  flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  margin-left:10px;
+}}
+#close-btn:hover {{ background:#E2E8F0; }}
+
+#popup-body {{ padding:0 20px 20px; }}
+
+.bag-row {{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:9px 0;
+  border-bottom:1px solid #F0F4F8;
+}}
+.bag-row:last-of-type {{ border-bottom:none; }}
+
+.bag-size {{
+  min-width:46px;
+  text-align:center;
+  background:#F7FAFC;
+  border-radius:8px;
+  padding:5px 8px;
+  font-size:13px;
+  font-weight:800;
+  color:#4A5568;
+  flex-shrink:0;
+}}
+.bar-wrap {{ flex:1; }}
+.bar-track {{
+  height:7px;
+  background:#EDF2F7;
+  border-radius:4px;
+  overflow:hidden;
+  margin-bottom:2px;
+}}
+.bar-fill {{
+  height:100%;
+  border-radius:4px;
+  background:linear-gradient(90deg,#3ECF8E,#1AA7EC);
+}}
+.bag-price {{
+  font-size:14px;
+  font-weight:800;
+  color:#2D9A6B;
+  flex-shrink:0;
+  min-width:75px;
+  text-align:right;
+}}
+
+.note {{
+  background:#F7FAFC;
+  border-radius:10px;
+  padding:9px 12px;
+  font-size:11px;
+  color:#718096;
+  margin-top:12px;
+}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hint">
+    <span class="hint-main">🗺️ 서울시 배출량 지도</span>
+    <span class="hint-badge">🛒 구 클릭 → 종량제 봉투 가격</span>
+    <span class="hint-sub">마우스 호버 → 배출량 정보</span>
+  </div>
+
+  <svg viewBox="0 0 580 460" id="map">
+    {svg_body}
+  </svg>
+
+  <div class="legend">
+    <span style="background:#3ECF8E">🟢 우수 ~1.2 kg</span>
+    <span style="background:#FFB347">🟠 보통 1.2~2.0 kg</span>
+    <span style="background:#FF6B6B">🔴 경고 2.0+ kg</span>
+    <span style="background:#2C5282">◼ 선택 구</span>
+    <span style="background:#2D9A6B">🛒 클릭 → 봉투가격</span>
+  </div>
+</div>
+
+<!-- 호버 툴팁 -->
+<div id="tip"></div>
+
+<!-- 가격 팝업 -->
+<div id="overlay" onclick="closePopup(event)">
+  <div id="popup">
+    <div id="popup-header">
+      <div>
+        <div id="popup-title"></div>
+        <div id="popup-sub">🛒 종량제 봉투 가격표 &nbsp;·&nbsp; 가정용 생활쓰레기 규격봉투</div>
+      </div>
+      <button id="close-btn" onclick="document.getElementById('overlay').classList.remove('show')">✕</button>
+    </div>
+    <div id="popup-body"></div>
+  </div>
+</div>
+
+<script>
+var HOVER = {tip_json};
+var BAG   = {bag_json};
+
+var tip      = document.getElementById('tip');
+var overlay  = document.getElementById('overlay');
+var pTitle   = document.getElementById('popup-title');
+var pHeader  = document.getElementById('popup-header');
+var pBody    = document.getElementById('popup-body');
+
+function closePopup(e) {{
+  if (e.target === overlay) overlay.classList.remove('show');
+}}
+
+document.querySelectorAll('#map .gu-path').forEach(function(p) {{
+
+  // 호버 → 배출량 툴팁
+  p.addEventListener('mousemove', function(e) {{
+    var g = p.getAttribute('data-gu');
+    var i = HOVER[g];
+    if (!i) return;
+    tip.innerHTML =
+      '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">'
+        + '<b style="font-size:13px">' + i.emj + ' ' + g + '</b>'
+        + '<span style="background:' + i.clr + '22;color:' + i.clr
+          + ';padding:1px 7px;border-radius:5px;font-size:10px;font-weight:700">'
+          + i.lbl + '</span>'
+      + '</div>'
+      + '🗑️ 1인당: <b>' + i.amt + ' kg/일</b><br>'
+      + '📊 총량: ' + i.tot + ' 톤/일<br>'
+      + '👥 주민: ' + i.pop.toLocaleString() + '명<br>'
+      + '<span style="font-size:10px;color:#AAB">🛒 클릭하면 봉투 가격 확인</span>';
+    tip.style.display = 'block';
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top  = (e.clientY - 8) + 'px';
+  }});
+
+  p.addEventListener('mouseleave', function() {{
+    tip.style.display = 'none';
+  }});
+
+  // 클릭 → 봉투 가격 팝업
+  p.addEventListener('click', function() {{
+    tip.style.display = 'none';
+    var g  = p.getAttribute('data-gu');
+    var hi = HOVER[g];
+    var pr = BAG[g];
+    if (!hi) return;
+
+    // 헤더 배경색 (등급 색상)
+    pHeader.style.background = hi.clr + '18';
+    pTitle.innerHTML = hi.emj + ' <b>' + g + '</b>'
+      + '&nbsp;<span style="font-size:12px;color:' + hi.clr
+      + ';background:' + hi.clr + '18;padding:2px 8px;border-radius:6px;font-weight:700">'
+      + hi.lbl + '</span>';
+
+    // 가격표 렌더링
+    if (!pr || Object.keys(pr).length === 0) {{
+      pBody.innerHTML = '<div style="text-align:center;padding:24px;color:#A0AEC0">가격 정보가 없어요</div>';
+    }} else {{
+      var maxP = Math.max.apply(null, Object.values(pr));
+      var rows = '';
+      for (var size in pr) {{
+        var price = pr[size];
+        var pct   = Math.round((price / maxP) * 100);
+        rows +=
+          '<div class="bag-row">'
+            + '<div class="bag-size">' + size + '</div>'
+            + '<div class="bar-wrap">'
+              + '<div class="bar-track">'
+                + '<div class="bar-fill" style="width:' + pct + '%"></div>'
+              + '</div>'
+            + '</div>'
+            + '<div class="bag-price">' + price.toLocaleString() + ' 원</div>'
+          + '</div>';
+      }}
+      pBody.innerHTML = rows
+        + '<div class="note">📌 가정용 생활쓰레기 규격봉투 기준 · 출처: 공공데이터포털</div>';
+    }}
+
+    overlay.classList.add('show');
+  }});
+}});
+</script>
+</body>
+</html>"""
     GU_PATHS = {
         "도봉구":"M270,28 L340,22 L365,55 L345,80 L300,85 L268,65 Z",
         "노원구":"M340,22 L425,26 L440,62 L405,88 L365,82 L365,55 Z",
@@ -718,7 +1082,7 @@ if menu == "🗺️ 배출량 지도":
 
     with col_l:
         st.markdown('<div class="sec-title">🗺️ 서울시 구별 배출량 지도</div>', unsafe_allow_html=True)
-        st.markdown(build_svg_map(df_amt, sel, BAG_PRICES), unsafe_allow_html=True)
+        components.html(build_svg_map(df_amt, sel, BAG_PRICES), height=580, scrolling=False)
 
         st.markdown('<div class="sec-title">🏆 배출량 순위</div>', unsafe_allow_html=True)
         df_rank = df_amt.reset_index().sort_values("1인당")
