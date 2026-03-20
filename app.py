@@ -692,4 +692,4 @@ with st.sidebar:
               f'background:#EBF8F3;color:#2D9A6B;padding:4px 12px;border-radius:8px;'
               f'font-size:0.75rem;font-weight:700;text-decoration:none">🏛️ 구청 사이트 →</a>'
             "</div>",
-            unsafe_allow_html=True,
+            unsafe_allow_html=True)
