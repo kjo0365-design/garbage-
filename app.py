@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import random, os, shutil
+import random, os, shutil, json
 from datetime import datetime
 
 # ══════════════════════════════════════
@@ -35,7 +35,7 @@ div[data-testid="stAppViewContainer"] { padding-top: 0 !important; }
     max-width: 100% !important;
 }
 
-/* ══ 사이드바 — 밝은 흰색 테마 ══ */
+/* ══ 사이드바 ══ */
 section[data-testid="stSidebar"] {
     background: #FFFFFF !important;
     border-right: 1.5px solid #E8ECF4 !important;
@@ -50,14 +50,12 @@ section[data-testid="stSidebar"] h3,
 section[data-testid="stSidebar"] h4,
 section[data-testid="stSidebar"] h5 { color: #1A202C !important; }
 section[data-testid="stSidebar"] svg { fill: #4A5568 !important; }
-/* 셀렉트박스 */
 section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
     background: #F7FAFC !important;
     border-color: #CBD5E0 !important;
     border-radius: 10px !important;
     color: #2D3748 !important;
 }
-/* 라디오 메뉴 */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] label {
     border-radius: 10px; padding: 9px 14px; display: block;
     transition: background 0.15s; cursor: pointer;
@@ -67,7 +65,6 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] label {
 section[data-testid="stSidebar"] div[data-testid="stRadio"] label:hover {
     background: #EBF8F3; color: #2D9A6B !important;
 }
-/* 선택된 라디오 */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] input:checked + div {
     background: linear-gradient(90deg,#3ECF8E22,#1AA7EC11);
     border-radius: 10px;
@@ -154,7 +151,7 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] input:checked + div 
 .lv-box { background:white; border-radius:14px; padding:18px 12px; text-align:center; box-shadow:0 2px 10px rgba(0,0,0,0.05); border:2px solid #F0F2F5; }
 .lv-box.done { border-color:#3ECF8E; background:#F0FDF6; }
 
-/* ══ 내 현황 페이지 ══ */
+/* ══ 내 현황 ══ */
 .profile-hero {
     background: linear-gradient(135deg, #667EEA, #764BA2);
     border-radius: 20px; padding: 28px 32px; color: white;
@@ -167,7 +164,6 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] input:checked + div 
 .profile-stat  { text-align: center; }
 .profile-stat-val { font-size: 1.5rem; font-weight: 800; }
 .profile-stat-lbl { font-size: 0.72rem; opacity: 0.8; }
-
 .history-item {
     background: white; border-radius: 12px; padding: 12px 16px;
     margin-bottom: 8px; display: flex; align-items: center; gap: 14px;
@@ -176,7 +172,6 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] input:checked + div 
 .history-icon { font-size: 1.4rem; flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
 .history-plus  { color: #3ECF8E; font-size: 0.9rem; font-weight: 800; margin-left: auto; }
 .history-minus { color: #FF6B6B; font-size: 0.9rem; font-weight: 800; margin-left: auto; }
-
 .discharge-row {
     background: white; border-radius: 12px; padding: 14px 18px;
     margin-bottom: 8px; display: flex; align-items: center;
@@ -184,13 +179,45 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] input:checked + div 
 }
 
 /* ══ 지도 ══ */
-.map-wrap { background:white; border-radius:16px; padding:18px; box-shadow:0 2px 14px rgba(0,0,0,0.07); }
-.gu-path  { cursor:pointer; stroke:white; stroke-width:1.5; transition:all 0.2s; }
+.map-wrap  { background:white; border-radius:16px; padding:18px; box-shadow:0 2px 14px rgba(0,0,0,0.07); }
+.gu-path   { cursor:pointer; stroke:white; stroke-width:1.5; transition:all 0.2s; }
 .gu-path:hover { stroke:#1C3F6E; stroke-width:2.5; filter:brightness(0.82); }
 
-/* 순위 */
+/* ══ 종량제 가격 카드 ══ */
+.price-panel {
+    background: white; border-radius: 16px; padding: 20px;
+    box-shadow: 0 2px 14px rgba(0,0,0,0.07);
+}
+.price-panel-title {
+    font-size: 1.05rem; font-weight: 800; color: #1A1A2E;
+    margin-bottom: 14px; display: flex; align-items: center; gap: 6px;
+}
+.price-tab-row {
+    display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap;
+}
+.price-tab {
+    padding: 5px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 700;
+    border: 1.5px solid #E2E8F0; background: #F7FAFC; color: #4A5568; cursor: pointer;
+    transition: all 0.15s;
+}
+.price-tab.active { background: #3ECF8E; color: white; border-color: #3ECF8E; }
+.price-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px;
+    margin-bottom: 10px;
+}
+.price-cell {
+    background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 10px;
+    padding: 10px 6px; text-align: center;
+}
+.price-cell-size { font-size: 0.72rem; color: #94A3B8; font-weight: 700; margin-bottom: 4px; }
+.price-cell-val  { font-size: 1.05rem; font-weight: 800; color: #15803D; }
+.price-cell-won  { font-size: 0.68rem; color: #94A3B8; margin-top: 1px; }
+.price-empty {
+    text-align: center; padding: 2rem; color: #A0AEC0; font-size: 0.85rem;
+}
+
+/* 순위 / 연락처 */
 .rank-item { background:white; border-radius:10px; padding:9px 14px; margin:4px 0; display:flex; align-items:center; gap:10px; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
-/* 연락처 */
 .contact-box { background:white; border-radius:14px; padding:16px 18px; box-shadow:0 2px 10px rgba(0,0,0,0.06); display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .no-day-box { background:#FFF3F3; border-radius:12px; padding:10px 16px; border-left:4px solid #FF6B6B; font-size:0.83rem; color:#CC3333; margin-bottom:12px; }
 
@@ -205,6 +232,7 @@ div[data-testid="stButton"] > button { border-radius:12px !important; font-weigh
 for src, dst in [
     ("/mnt/user-data/uploads/seoul_data.xlsx",   "seoul_data.xlsx"),
     ("/mnt/user-data/uploads/seoul_garbage.csv", "seoul_garbage.csv"),
+    ("/mnt/user-data/uploads/trashbag.csv",      "trashbag.csv"),
 ]:
     if not os.path.exists(dst) and os.path.exists(src):
         shutil.copy(src, dst)
@@ -242,9 +270,69 @@ def load_schedule():
     df = df[keep].drop_duplicates(subset=["시군구명"], keep="first")
     return df.set_index("시군구명")
 
+@st.cache_data
+def load_trashbag():
+    """종량제 봉투 가격 — 서울 전 구 로드"""
+    df = pd.read_csv("trashbag.csv", encoding="cp949")
+    return df[df["시도명"] == "서울특별시"].copy()
+
+def get_bag_prices(df_bag, gu):
+    """특정 구의 종량제 봉투 가격 딕셔너리 반환"""
+    sub = df_bag[df_bag["시군구명"] == gu]
+    result = {}
+
+    # ① 가정용 생활쓰레기 규격봉투
+    home_life = sub[
+        (sub["종량제봉투용도"] == "생활쓰레기") &
+        (sub["종량제봉투종류"] == "규격봉투") &
+        (sub["종량제봉투사용대상"] == "가정용")
+    ]
+    sizes_life = ["5ℓ","10ℓ","20ℓ","30ℓ","50ℓ","75ℓ","100ℓ"]
+    life_prices = {}
+    if not home_life.empty:
+        row = home_life.iloc[0]
+        for s in sizes_life:
+            col = f"{s}가격"
+            if col in row and pd.notna(row[col]) and int(row[col]) > 0:
+                life_prices[s] = int(row[col])
+    result["생활쓰레기"] = life_prices
+
+    # ② 가정용 음식물쓰레기
+    home_food = sub[
+        (sub["종량제봉투용도"] == "음식물쓰레기") &
+        (sub["종량제봉투사용대상"] == "가정용")
+    ]
+    sizes_food = ["1ℓ","2ℓ","3ℓ","5ℓ","10ℓ","20ℓ"]
+    food_prices = {}
+    if not home_food.empty:
+        row = home_food.iloc[0]
+        for s in sizes_food:
+            col = f"{s}가격"
+            if col in row and pd.notna(row[col]) and int(row[col]) > 0:
+                food_prices[s] = int(row[col])
+    result["음식물쓰레기"] = food_prices
+
+    # ③ 재사용규격봉투
+    reuse = sub[
+        (sub["종량제봉투종류"] == "재사용규격봉투") &
+        (sub["종량제봉투용도"] == "생활쓰레기") &
+        (sub["종량제봉투사용대상"] == "가정용")
+    ]
+    reuse_prices = {}
+    if not reuse.empty:
+        row = reuse.iloc[0]
+        for s in sizes_life:
+            col = f"{s}가격"
+            if col in row and pd.notna(row[col]) and int(row[col]) > 0:
+                reuse_prices[s] = int(row[col])
+    result["재사용봉투"] = reuse_prices
+
+    return result
+
 try:
     df_amt  = load_amount()
     df_sch  = load_schedule()
+    df_bag  = load_trashbag()
     DATA_OK = True
 except Exception as e:
     DATA_OK = False; DATA_ERR = str(e)
@@ -258,32 +346,19 @@ EMJ  = {"red":"😰","orange":"😅","green":"😊"}
 LBL  = {"red":"🔴 경고","orange":"🟠 보통","green":"🟢 우수"}
 DAYS = ["일","월","화","수","목","금","토"]
 
-# ── 자치구 홈페이지 URL ──
 GU_URLS = {
-    "종로구":"https://www.jongno.go.kr",
-    "중구":"https://www.junggu.seoul.kr",
-    "용산구":"https://www.yongsan.go.kr",
-    "성동구":"https://www.sd.go.kr",
-    "광진구":"https://www.gwangjin.go.kr",
-    "동대문구":"https://www.ddm.go.kr",
-    "중랑구":"https://www.jungnang.go.kr",
-    "성북구":"https://www.sb.go.kr",
-    "강북구":"https://www.gangbuk.go.kr",
-    "도봉구":"https://www.dobong.go.kr",
-    "노원구":"https://www.nowon.kr",
-    "은평구":"https://www.ep.go.kr",
-    "서대문구":"https://www.sdm.go.kr",
-    "마포구":"https://www.mapo.go.kr",
-    "양천구":"https://www.yangcheon.go.kr",
-    "강서구":"https://www.gangseo.seoul.kr",
-    "구로구":"https://www.guro.go.kr",
-    "금천구":"https://www.geumcheon.go.kr",
-    "영등포구":"https://www.ydp.go.kr",
-    "동작구":"https://www.dongjak.go.kr",
-    "관악구":"https://www.gwanak.go.kr",
-    "서초구":"https://www.seocho.go.kr",
-    "강남구":"https://www.gangnam.go.kr",
-    "송파구":"https://www.songpa.go.kr",
+    "종로구":"https://www.jongno.go.kr","중구":"https://www.junggu.seoul.kr",
+    "용산구":"https://www.yongsan.go.kr","성동구":"https://www.sd.go.kr",
+    "광진구":"https://www.gwangjin.go.kr","동대문구":"https://www.ddm.go.kr",
+    "중랑구":"https://www.jungnang.go.kr","성북구":"https://www.sb.go.kr",
+    "강북구":"https://www.gangbuk.go.kr","도봉구":"https://www.dobong.go.kr",
+    "노원구":"https://www.nowon.kr","은평구":"https://www.ep.go.kr",
+    "서대문구":"https://www.sdm.go.kr","마포구":"https://www.mapo.go.kr",
+    "양천구":"https://www.yangcheon.go.kr","강서구":"https://www.gangseo.seoul.kr",
+    "구로구":"https://www.guro.go.kr","금천구":"https://www.geumcheon.go.kr",
+    "영등포구":"https://www.ydp.go.kr","동작구":"https://www.dongjak.go.kr",
+    "관악구":"https://www.gwanak.go.kr","서초구":"https://www.seocho.go.kr",
+    "강남구":"https://www.gangnam.go.kr","송파구":"https://www.songpa.go.kr",
     "강동구":"https://www.gangdong.go.kr",
 }
 
@@ -355,9 +430,68 @@ def render_waste_card(w):
         + "</div>"
     )
 
+# ══════════════════════════════════════
+# 종량제 가격 패널 렌더링 (Streamlit 컴포넌트)
+# ══════════════════════════════════════
+def render_price_panel(gu, df_bag):
+    prices = get_bag_prices(df_bag, gu)
+
+    tab_key = f"price_tab_{gu}"
+    if tab_key not in st.session_state:
+        st.session_state[tab_key] = "생활쓰레기"
+
+    # 탭 버튼
+    tab_cols = st.columns(3)
+    tabs = [
+        ("🗑️ 생활쓰레기", "생활쓰레기"),
+        ("🍖 음식물",     "음식물쓰레기"),
+        ("♻️ 재사용봉투", "재사용봉투"),
+    ]
+    for i, (label, key) in enumerate(tabs):
+        with tab_cols[i]:
+            is_active = st.session_state[tab_key] == key
+            btn_style = (
+                "background:#3ECF8E;color:white;border:none;border-radius:20px;"
+                "padding:6px 0;width:100%;font-weight:700;font-size:0.82rem;cursor:pointer;"
+            ) if is_active else (
+                "background:#F7FAFC;color:#4A5568;border:1.5px solid #E2E8F0;border-radius:20px;"
+                "padding:6px 0;width:100%;font-weight:700;font-size:0.82rem;cursor:pointer;"
+            )
+            if st.button(label, key=f"ptab_{gu}_{key}", use_container_width=True):
+                st.session_state[tab_key] = key
+                st.rerun()
+
+    current_tab = st.session_state[tab_key]
+    price_data = prices.get(current_tab, {})
+
+    if not price_data:
+        st.markdown(
+            '<div class="price-empty">📭 해당 봉투 데이터가 없어요</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        cells = ""
+        for size, val in price_data.items():
+            cells += (
+                f'<div class="price-cell">'
+                f'<div class="price-cell-size">{size}</div>'
+                f'<div class="price-cell-val">{val:,}</div>'
+                f'<div class="price-cell-won">원</div>'
+                f'</div>'
+            )
+        st.markdown(
+            f'<div class="price-grid">{cells}</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<div style="font-size:0.72rem;color:#A0AEC0;margin-top:4px">'
+            '※ 가정용 기준 · 출처: 공공데이터포털</div>',
+            unsafe_allow_html=True,
+        )
+
 
 # ══════════════════════════════════════
-# SVG 인터랙티브 지도  (클릭 → 자치구청 사이트)
+# SVG 지도 — 클릭 시 구 선택 (구청 URL 제거)
 # ══════════════════════════════════════
 def build_svg_map(df_amt, sel):
     GU_PATHS = {
@@ -399,15 +533,14 @@ def build_svg_map(df_amt, sel):
         "강동구":(498,215),
     }
 
-    # 툴팁 데이터 + URL 포함
+    # 툴팁 데이터 (구청 URL 제거, 가격 안내 메시지로 변경)
     tip_parts = []
     for gu, row in df_amt.iterrows():
-        lc  = row["등급"]
-        url = GU_URLS.get(gu, "#")
+        lc = row["등급"]
         tip_parts.append(
             f'"{gu}":{{"amt":{row["1인당"]},"tot":{row["총량"]},'
             f'"pop":{int(row["주민수"])},"lbl":"{LBL[lc]}",'
-            f'"clr":"{CLR[lc]}","emj":"{EMJ[lc]}","url":"{url}"}}'
+            f'"clr":"{CLR[lc]}","emj":"{EMJ[lc]}"}}'
         )
     tip_json = "{" + ",".join(tip_parts) + "}"
 
@@ -415,7 +548,7 @@ def build_svg_map(df_amt, sel):
     for gu, pd_ in GU_PATHS.items():
         if gu in df_amt.index:
             lc   = df_amt.loc[gu,"등급"]
-            fill = "#2C5282" if gu == sel else CLR[lc]
+            fill = "#2563EB" if gu == sel else CLR[lc]
             sw   = "3" if gu == sel else "1.5"
         else:
             fill, sw = "#DDD","1.5"
@@ -435,9 +568,9 @@ def build_svg_map(df_amt, sel):
     return f"""
 <div class="map-wrap">
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-    <span style="font-size:1rem">🏛️</span>
+    <span style="font-size:1rem">🗑️</span>
     <span style="font-size:0.82rem;color:#3ECF8E;font-weight:800">
-      구를 클릭하면 해당 자치구청 공식 사이트로 연결돼요
+      구를 클릭하면 해당 구의 종량제 봉투 가격을 확인할 수 있어요
     </span>
     <span style="font-size:0.75rem;color:#999;margin-left:auto">마우스를 올리면 배출량 정보 표시</span>
   </div>
@@ -457,8 +590,8 @@ def build_svg_map(df_amt, sel):
     <span style="background:#3ECF8E;color:white;padding:3px 10px;border-radius:8px;font-size:0.7rem;font-weight:700">🟢 우수 ~1.2 kg</span>
     <span style="background:#FFB347;color:white;padding:3px 10px;border-radius:8px;font-size:0.7rem;font-weight:700">🟠 보통 1.2~2.0 kg</span>
     <span style="background:#FF6B6B;color:white;padding:3px 10px;border-radius:8px;font-size:0.7rem;font-weight:700">🔴 경고 2.0+ kg</span>
-    <span style="background:#2C5282;color:white;padding:3px 10px;border-radius:8px;font-size:0.7rem;font-weight:700">◼ 선택 구</span>
-    <span style="background:#E2E8F0;color:#4A5568;padding:3px 10px;border-radius:8px;font-size:0.7rem;font-weight:700">🏛️ 클릭 → 구청 사이트</span>
+    <span style="background:#2563EB;color:white;padding:3px 10px;border-radius:8px;font-size:0.7rem;font-weight:700">◼ 선택 구</span>
+    <span style="background:#E2E8F0;color:#4A5568;padding:3px 10px;border-radius:8px;font-size:0.7rem;font-weight:700">🗑️ 클릭 → 봉투 가격 확인</span>
   </div>
 </div>
 
@@ -469,7 +602,6 @@ def build_svg_map(df_amt, sel):
   var paths=document.querySelectorAll('#seoulSVG .gu-path');
 
   paths.forEach(function(p){{
-    /* 마우스 호버 → 툴팁 */
     p.addEventListener('mousemove',function(e){{
       var g=p.getAttribute('data-gu'),i=D[g];
       if(!i)return;
@@ -482,21 +614,21 @@ def build_svg_map(df_amt, sel):
         +'📊 총량: '+i.tot+' 톤/일<br>'
         +'👥 주민: '+i.pop.toLocaleString()+'명<br>'
         +'<div style="margin-top:6px;padding-top:6px;border-top:1px solid #eee;'
-        +'font-size:0.77rem;color:#3ECF8E;font-weight:700">🏛️ 클릭하면 구청 사이트로 이동</div>';
+        +'font-size:0.77rem;color:#3ECF8E;font-weight:700">🗑️ 클릭하면 봉투 가격 확인</div>';
       tt.style.display='block';
       tt.style.left=(e.clientX+14)+'px';
       tt.style.top=(e.clientY-10)+'px';
     }});
-
     p.addEventListener('mouseleave',function(){{
       tt.style.display='none';
     }});
-
-    /* 클릭 → 자치구청 사이트 새 탭으로 열기 */
+    /* 클릭 → Streamlit query param으로 구 전달 */
     p.addEventListener('click',function(){{
-      var g=p.getAttribute('data-gu'),i=D[g];
-      if(i && i.url && i.url!=='#'){{
-        window.open(i.url,'_blank');
+      var g=p.getAttribute('data-gu');
+      if(g){{
+        /* Streamlit 1.x: window.parent.postMessage로 세션 변경 불가
+           대신 URL hash 방식 사용 — 페이지 새로고침 없이 감지 */
+        window.location.hash='gu='+encodeURIComponent(g);
       }}
     }});
   }});
@@ -511,10 +643,11 @@ def build_svg_map(df_amt, sel):
 for k, v in [
     ("pts",0),("gu","마포구"),
     ("q_done",False),("q_idx",0),("q_user_ans",None),("q_pts_given",False),
-    ("pt_history",[]),   # 포인트 내역
-    ("discharge_log",[]), # 배출 인증 내역
+    ("pt_history",[]),
+    ("discharge_log",[]),
     ("nickname","환경 지킴이"),
     ("join_date", datetime.now().strftime("%Y.%m.%d")),
+    ("map_selected_gu", None),
 ]:
     if k not in st.session_state:
         st.session_state[k] = v
@@ -557,616 +690,6 @@ with st.sidebar:
               f'<div style="font-size:0.75rem;color:#718096">{LBL[lv_c]}  ·  주민 {int(row_a["주민수"]):,}명</div>'
               f'<a href="{url_gu}" target="_blank" style="display:inline-block;margin-top:8px;'
               f'background:#EBF8F3;color:#2D9A6B;padding:4px 12px;border-radius:8px;'
-              f'font-size:0.75rem;font-weight:700;text-decoration:none">🏛️ 구청 사이트 바로가기 →</a>'
+              f'font-size:0.75rem;font-weight:700;text-decoration:none">🏛️ 구청 사이트 →</a>'
             "</div>",
             unsafe_allow_html=True,
-        )
-    else:
-        sel = "마포구"
-
-    st.markdown("---")
-    lv_now = get_lv(st.session_state.pts)
-    st.markdown(
-        '<div style="background:linear-gradient(135deg,#FFF8E1,#FFF3E0);border-radius:14px;'
-        'padding:14px;text-align:center;border:1.5px solid #FFE082">'
-          f'<div style="font-size:2rem">{lv_now["emoji"]}</div>'
-          f'<div style="font-size:0.8rem;font-weight:800;color:#E65100">{lv_now["name"]}</div>'
-          f'<div style="font-size:2rem;font-weight:800;color:#FF8F00;margin-top:4px">'
-            f'{st.session_state.pts} P</div>'
-          f'<div style="font-size:0.72rem;color:#999;margin-top:2px">{st.session_state.nickname}</div>'
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-
-# ════════════════════════════════════════════════════
-# 상단 헤더바
-# ════════════════════════════════════════════════════
-if DATA_OK:
-    row_a  = df_amt.loc[sel]; lv_c = row_a["등급"]
-    lv_now = get_lv(st.session_state.pts)
-    st.markdown(
-        '<div class="topbar">'
-          "<div>"
-            '<h1>🧚 서울 쓰레기 요정</h1>'
-            '<p>2024년 실제 데이터 기반 · 서울 25개 자치구 분리배출 가이드</p>'
-          "</div>"
-          '<div style="display:flex;align-items:center;gap:12px">'
-            f'<div class="topbar-badge">{EMJ[lv_c]} {sel} · {row_a["1인당"]} kg/일 · {LBL[lv_c]}</div>'
-            f'<div class="topbar-badge">{lv_now["emoji"]} {st.session_state.pts} P</div>'
-          "</div>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-
-# ════════════════════════════════════════════════════
-# PAGE 1 — 배출량 지도
-# ════════════════════════════════════════════════════
-if menu == "🗺️ 배출량 지도":
-    if not DATA_OK: st.error(f"데이터 오류: {DATA_ERR}"); st.stop()
-
-    lv_c = df_amt.loc[sel,"등급"]
-    banners = {
-        "red":    f'<div class="banner-red">🚨 {sel}은 배출량 경고 지역! 서울 평균보다 높아요. 분리배출을 실천해요.</div>',
-        "green":  f'<div class="banner-green">🌿 {sel}은 배출량 우수 지역! 앞으로도 올바른 분리배출로 유지해요. 👍</div>',
-        "orange": f'<div class="banner-orange">🟠 {sel}은 보통 수준. 조금만 더 노력하면 녹색 지역이 될 수 있어요!</div>',
-    }
-    st.markdown(banners[lv_c], unsafe_allow_html=True)
-
-    col_l, col_r = st.columns([1, 1], gap="large")
-
-    with col_l:
-        st.markdown('<div class="sec-title">🗺️ 서울시 구별 배출량 지도</div>', unsafe_allow_html=True)
-        st.markdown(build_svg_map(df_amt, sel), unsafe_allow_html=True)
-
-        st.markdown('<div class="sec-title">🏆 배출량 순위</div>', unsafe_allow_html=True)
-        df_rank = df_amt.reset_index().sort_values("1인당")
-        rb, rw = st.columns(2, gap="medium")
-        with rb:
-            st.markdown("**🌿 적은 TOP 5**")
-            for i, (_, r) in enumerate(df_rank.head(5).iterrows(), 1):
-                mark = " ⬅" if r["구"] == sel else ""
-                clr  = CLR[r["등급"]]
-                st.markdown(
-                    '<div class="rank-item">'
-                      f'<div style="width:22px;height:22px;border-radius:50%;background:{clr}22;color:{clr};'
-                      f'display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;flex-shrink:0">{i}</div>'
-                      f'<div style="flex:1;font-size:0.88rem;font-weight:700">{r["구"]}'
-                      f'<span style="color:#3ECF8E;font-size:0.7rem">{mark}</span></div>'
-                      f'<div style="font-weight:700;color:{clr}">{r["1인당"]}kg</div>'
-                    "</div>",
-                    unsafe_allow_html=True,
-                )
-        with rw:
-            st.markdown("**🔴 많은 TOP 5**")
-            for i, (_, r) in enumerate(df_rank.tail(5).iloc[::-1].iterrows(), 1):
-                mark = " ⬅" if r["구"] == sel else ""
-                clr  = CLR[r["등급"]]
-                st.markdown(
-                    '<div class="rank-item">'
-                      f'<div style="width:22px;height:22px;border-radius:50%;background:{clr}22;color:{clr};'
-                      f'display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:800;flex-shrink:0">{i}</div>'
-                      f'<div style="flex:1;font-size:0.88rem;font-weight:700">{r["구"]}'
-                      f'<span style="color:#3ECF8E;font-size:0.7rem">{mark}</span></div>'
-                      f'<div style="font-weight:700;color:{clr}">{r["1인당"]}kg</div>'
-                    "</div>",
-                    unsafe_allow_html=True,
-                )
-
-    with col_r:
-        st.markdown('<div class="sec-title">📊 내 동네 현황</div>', unsafe_allow_html=True)
-        row_a = df_amt.loc[sel]
-        amt_v=row_a["1인당"]; tot_v=row_a["총량"]; pop_v=int(row_a["주민수"]); clr_v=CLR[lv_c]
-        st.markdown(
-            '<div class="metric-grid">'
-              f'<div class="metric-box" style="border-top-color:{clr_v}">'
-                f'<div class="metric-val" style="color:{clr_v}">{amt_v}</div>'
-                '<div class="metric-unit">kg/일 · 1인당</div>'
-                f'<div class="metric-lbl" style="color:{clr_v}">{LBL[lv_c]}</div>'
-              "</div>"
-              '<div class="metric-box" style="border-top-color:#1AA7EC">'
-                f'<div class="metric-val" style="color:#1AA7EC">{tot_v}</div>'
-                '<div class="metric-unit">톤/일 · 총배출</div>'
-              "</div>"
-              '<div class="metric-box" style="border-top-color:#888">'
-                f'<div class="metric-val" style="color:#555;font-size:1.3rem">{pop_v:,}</div>'
-                '<div class="metric-unit">명 · 주민수</div>'
-              "</div>"
-            "</div>",
-            unsafe_allow_html=True,
-        )
-        st.markdown('<div class="sec-title">📈 25개구 배출량 비교</div>', unsafe_allow_html=True)
-        df_c = df_amt.reset_index().sort_values("1인당", ascending=True)
-        fig  = go.Figure()
-        for _, r in df_c.iterrows():
-            is_sel = r["구"] == sel
-            fig.add_trace(go.Bar(
-                x=[r["1인당"]], y=[r["구"]], orientation="h",
-                marker_color="#2C5282" if is_sel else CLR[r["등급"]],
-                marker_line_width=0,
-                text=f" {r['1인당']}" if is_sel else "",
-                textposition="outside", textfont=dict(size=9),
-                showlegend=False,
-                hovertemplate=(
-                    f"<b>{EMJ[r['등급']]} {r['구']}</b><br>"
-                    f"1인당: <b>{r['1인당']} kg/일</b><br>"
-                    f"총량: {r['총량']} 톤/일<br>"
-                    f"주민: {int(r['주민수']):,}명<extra></extra>"
-                ),
-            ))
-        fig.add_vline(x=1.2, line_dash="dot", line_color="#3ECF8E", line_width=1.5)
-        fig.add_vline(x=2.0, line_dash="dot", line_color="#FF6B6B", line_width=1.5)
-        fig.update_layout(
-            height=540, margin=dict(l=0,r=44,t=10,b=10),
-            plot_bgcolor="white", paper_bgcolor="white",
-            xaxis=dict(gridcolor="#F0F2F5", range=[0,3.4], title="kg/일"),
-            yaxis=dict(gridcolor="white"),
-            font=dict(family="Nanum Gothic", size=11), bargap=0.26,
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-
-# ════════════════════════════════════════════════════
-# PAGE 2 — 우리동네 스케줄
-# ════════════════════════════════════════════════════
-elif menu == "📅 우리동네 스케줄":
-    if not DATA_OK: st.error("데이터 오류"); st.stop()
-    st.markdown(f'<div class="sec-title">📍 {sel} 배출 스케줄</div>', unsafe_allow_html=True)
-    row_s = df_sch.loc[sel] if sel in df_sch.index else None
-
-    if row_s is not None:
-        sc1, sc2, sc3 = st.columns(3, gap="large")
-        for col, icon, label, color, d_col, s_col, e_col, m_col in [
-            (sc1,"🗑️","일반쓰레기","#FF6B6B","생활쓰레기배출요일","생활쓰레기배출시작시각","생활쓰레기배출종료시각","생활쓰레기배출방법"),
-            (sc2,"♻️","재활용품","#3ECF8E","재활용품배출요일","재활용품배출시작시각","재활용품배출종료시각","재활용품배출방법"),
-            (sc3,"🍖","음식물쓰레기","#FFB347","음식물쓰레기배출요일","음식물쓰레기배출시작시각","음식물쓰레기배출종료시각","음식물쓰레기배출방법"),
-        ]:
-            with col:
-                t_s=safe(row_s[s_col]); t_e=safe(row_s[e_col]); method=safe(row_s[m_col])
-                st.markdown(
-                    f'<div class="sched-card" style="border-left-color:{color}">'
-                      '<div class="sched-header">'
-                        f'<span style="font-size:1.5rem">{icon}</span>'
-                        f'<span style="font-size:0.95rem;font-weight:800">{label}</span>'
-                        f'<div class="sched-time">⏰ {t_s}~{t_e}</div>'
-                      "</div>"
-                      + day_html(row_s[d_col])
-                      + f'<div style="font-size:0.8rem;color:#555;margin-top:10px;background:#F8F9FA;border-radius:10px;padding:10px;line-height:1.6">{method}</div>'
-                    "</div>",
-                    unsafe_allow_html=True,
-                )
-
-        st.markdown("---")
-        info_l, info_r = st.columns([2,1], gap="large")
-        with info_l:
-            no_day=safe(row_s["미수거일"])
-            if no_day not in ("정보 없음",""):
-                st.markdown(f'<div class="no-day-box">🚫 <b>미수거일:</b> {no_day}</div>', unsafe_allow_html=True)
-            bulky=safe(row_s["일시적다량폐기물배출방법"]); bulky_place=safe(row_s["일시적다량폐기물배출장소"])
-            skip_set={"정보 없음","미운영","없음","-","해당없음","해당사항없음","별도안내","처리업체와협의"}
-            if bulky not in skip_set:
-                st.markdown('<div class="sec-title">🛻 대형폐기물 배출</div>', unsafe_allow_html=True)
-                st.markdown(
-                    '<div class="card">'
-                      f'<div style="font-size:0.85rem;color:#444;line-height:1.7">{bulky}</div>'
-                      f'<div style="font-size:0.8rem;color:#888;margin-top:8px">📍 배출장소: {bulky_place}</div>'
-                    "</div>",
-                    unsafe_allow_html=True,
-                )
-            place_type=safe(row_s["배출장소유형"]); place=safe(row_s["배출장소"])
-            bg_p="#F0FDF6" if place_type=="문전수거" else "#FFFBF0"
-            icon_p="🏠" if place_type=="문전수거" else "🗂️"
-            st.markdown(
-                f'<div class="card" style="background:{bg_p}">'
-                  f'<div style="font-size:0.9rem;font-weight:800">{icon_p} {place_type}</div>'
-                  f'<div style="font-size:0.82rem;color:#555;margin-top:5px">{place}</div>'
-                "</div>",
-                unsafe_allow_html=True,
-            )
-        with info_r:
-            phone=safe(row_s["관리부서전화번호"]); dept=safe(row_s["관리부서명"])
-            st.markdown('<div class="sec-title">📞 관할 부서</div>', unsafe_allow_html=True)
-            st.markdown(
-                '<div class="contact-box">'
-                  "<div>"
-                    f'<div style="font-size:0.75rem;color:#888">{dept}</div>'
-                    f'<div style="font-size:1.2rem;font-weight:800;color:#1AA7EC;margin-top:3px">{phone}</div>'
-                  "</div>"
-                  '<span style="font-size:1.8rem">📲</span>'
-                "</div>",
-                unsafe_allow_html=True,
-            )
-            st.markdown(f"[📞 전화 걸기](tel:{phone.replace('-','')})")
-            url_gu = GU_URLS.get(sel,"#")
-            st.markdown(f"[🏛️ {sel}청 사이트]({url_gu})", unsafe_allow_html=False)
-    else:
-        st.info(f"{sel} 상세 정보가 없어요.")
-
-
-# ════════════════════════════════════════════════════
-# PAGE 3 — 분리배출 도감
-# ════════════════════════════════════════════════════
-elif menu == "📖 분리배출 도감":
-    st.markdown('<div class="sec-title">📖 알쏭달쏭 분리배출 도감</div>', unsafe_allow_html=True)
-
-    sf1, sf2, sf3 = st.columns([3,1.5,1], gap="medium")
-    with sf1:
-        search = st.text_input("🔍 검색", placeholder="우유팩, 라면봉지, 페트병…", label_visibility="collapsed")
-    with sf2:
-        cat_sel = st.selectbox("카테고리",
-            ["전체","♻️ 재활용","🗑️ 일반쓰레기","🍖 음식물","⚠️ 특수"],
-            label_visibility="collapsed")
-    with sf3:
-        st.markdown('<div style="padding-top:8px;font-size:0.8rem;color:#888">총 12개 품목</div>', unsafe_allow_html=True)
-
-    cat_map = {"전체":"all","♻️ 재활용":"recycle","🗑️ 일반쓰레기":"general","🍖 음식물":"food","⚠️ 특수":"special"}
-    filtered = [w for w in WASTE_DB
-                if (not search.strip() or search in w["name"] or search in w["ct"])
-                and (cat_map[cat_sel]=="all" or w["cat"]==cat_map[cat_sel])]
-
-    if not filtered:
-        st.info("검색 결과가 없어요 🔍")
-    else:
-        st.markdown('<div class="waste-grid">' + "".join(render_waste_card(w) for w in filtered) + "</div>", unsafe_allow_html=True)
-
-    if DATA_OK and sel in df_sch.index:
-        row_s2 = df_sch.loc[sel]
-        rd=safe(row_s2["재활용품배출요일"]); rt=safe(row_s2["재활용품배출시작시각"])+"~"+safe(row_s2["재활용품배출종료시각"])
-        fd=safe(row_s2["음식물쓰레기배출요일"]); ft=safe(row_s2["음식물쓰레기배출시작시각"])+"~"+safe(row_s2["음식물쓰레기배출종료시각"])
-        st.markdown(
-            '<div class="card" style="margin-top:16px;background:linear-gradient(135deg,#E8FFF5,#EEF9FF)">'
-              f'<div style="font-weight:800;font-size:1rem;margin-bottom:8px">📍 {sel} 배출 일정 연동</div>'
-              '<div style="font-size:0.85rem;line-height:2">'
-                f'♻️ 재활용품: <b>{rd}요일</b> &nbsp; {rt}<br>'
-                f'🍖 음식물쓰레기: <b>{fd}요일</b> &nbsp; {ft}'
-              "</div>"
-            "</div>",
-            unsafe_allow_html=True,
-        )
-
-
-# ════════════════════════════════════════════════════
-# PAGE 4 — 에코 마일리지
-# ════════════════════════════════════════════════════
-elif menu == "⭐ 에코 마일리지":
-    lv      = get_lv(st.session_state.pts)
-    next_lv = next((l for l in LEVEL_INFO if l["min"] > lv["min"]), None)
-    pct     = int(((st.session_state.pts-lv["min"])/(next_lv["min"]-lv["min"]))*100) if next_lv else 100
-    next_min= next_lv["min"] if next_lv else "MAX"
-    remain  = (next_lv["min"]-st.session_state.pts) if next_lv else 0
-    xp_suf  = f"다음 레벨까지 {remain}P" if next_lv else "🏆 최고 레벨 달성!"
-
-    ph, ch = st.columns([1,2], gap="large")
-    with ph:
-        st.markdown(
-            '<div class="pt-hero">'
-              "<div>"
-                '<div style="font-size:0.88rem;opacity:0.85">나의 에코 마일리지</div>'
-                f'<div class="pt-hero-num">{st.session_state.pts}</div>'
-                '<div class="pt-hero-sub">포인트 보유 중 ✨</div>'
-              "</div>"
-              f'<div style="font-size:4rem">{lv["emoji"]}</div>'
-            "</div>",
-            unsafe_allow_html=True,
-        )
-    with ch:
-        st.markdown(
-            '<div class="char-box">'
-              f'<span style="font-size:3.5rem;flex-shrink:0">{lv["emoji"]}</span>'
-              "<div style='flex:1'>"
-                f'<div style="font-size:0.8rem;font-weight:700;color:#3ECF8E">{lv["name"]}</div>'
-                '<div style="font-size:1.1rem;font-weight:800;margin:3px 0">나의 쓰레기 요정</div>'
-                '<div class="xp-track"><div class="xp-fill" style="width:{pct}%"></div></div>'
-                f'<div class="xp-label">{st.session_state.pts} / {next_min} P  ·  {xp_suf}</div>'
-              "</div>"
-            "</div>".replace("{pct}", str(pct)),
-            unsafe_allow_html=True,
-        )
-
-    st.markdown("---")
-    st.markdown('<div class="sec-title">💰 포인트 적립하기</div>', unsafe_allow_html=True)
-    e1, e2, e3, e4 = st.columns(4, gap="large")
-
-    with e1:
-        with st.container(border=True):
-            st.markdown("#### 📸 분리배출 AI 인증")
-            st.markdown('<span class="earn-pts">+50P</span>', unsafe_allow_html=True)
-            st.caption("올바르게 분리한 쓰레기 사진을 업로드하세요!")
-            uploaded = st.file_uploader("사진", type=["jpg","jpeg","png"], label_visibility="collapsed")
-            if uploaded: st.image(uploaded, width=160)
-            if st.button("✅ AI 인증하기", use_container_width=True, key="ai"):
-                if uploaded:
-                    st.session_state.pts += 50
-                    st.session_state.pt_history.append({"type":"earn","label":"📸 AI 인증","pts":50,"time":datetime.now().strftime("%m/%d %H:%M")})
-                    st.session_state.discharge_log.append({"type":"일반","gu":sel,"time":datetime.now().strftime("%m/%d %H:%M"),"pts":50})
-                    st.success("🎉 +50P!"); st.balloons(); st.rerun()
-                else: st.warning("사진을 먼저 올려 주세요!")
-
-    with e2:
-        with st.container(border=True):
-            st.markdown("#### ❓ OX 퀴즈")
-            st.markdown('<span class="earn-pts">+10P</span>', unsafe_allow_html=True)
-            quiz = QUIZZES[st.session_state.q_idx]
-            st.markdown(f'**"{quiz["q"]}"**')
-            if not st.session_state.q_done:
-                qa, qb = st.columns(2)
-                with qa:
-                    if st.button("⭕ O", use_container_width=True, key="qO"):
-                        st.session_state.q_done=True; st.session_state.q_user_ans=True; st.rerun()
-                with qb:
-                    if st.button("❌ X", use_container_width=True, key="qX"):
-                        st.session_state.q_done=True; st.session_state.q_user_ans=False; st.rerun()
-            else:
-                correct = st.session_state.q_user_ans==quiz["ans"]
-                if correct:
-                    st.success(f"🎉 정답! {quiz['exp']}")
-                    if not st.session_state.q_pts_given:
-                        st.session_state.pts+=10
-                        st.session_state.pt_history.append({"type":"earn","label":"❓ 퀴즈 정답","pts":10,"time":datetime.now().strftime("%m/%d %H:%M")})
-                        st.session_state.q_pts_given=True
-                else: st.error(f"😢 오답! {quiz['exp']}")
-                if st.button("🔄 다음 퀴즈", use_container_width=True):
-                    st.session_state.q_idx=random.randint(0,len(QUIZZES)-1)
-                    st.session_state.q_done=False; st.session_state.q_user_ans=None; st.session_state.q_pts_given=False; st.rerun()
-
-    with e3:
-        with st.container(border=True):
-            st.markdown("#### 📱 SNS 챌린지")
-            st.markdown('<span class="earn-pts">+500P</span>', unsafe_allow_html=True)
-            st.caption("분리배출 영상을 SNS에 올리고 링크 인증!")
-            link = st.text_input("링크", placeholder="https://instagram.com/...", label_visibility="collapsed")
-            if st.button("📣 인증하기", use_container_width=True):
-                if link.strip():
-                    st.session_state.pts+=500
-                    st.session_state.pt_history.append({"type":"earn","label":"📱 SNS 챌린지","pts":500,"time":datetime.now().strftime("%m/%d %H:%M")})
-                    st.success("🎬 +500P!"); st.balloons(); st.rerun()
-                else: st.warning("링크를 입력해 주세요!")
-
-    with e4:
-        with st.container(border=True):
-            st.markdown("#### 🏘️ 동네 녹색 달성")
-            st.markdown('<span class="earn-pts">+200P</span>', unsafe_allow_html=True)
-            if DATA_OK and sel in df_amt.index:
-                g=df_amt.loc[sel,"등급"]
-                if g=="green":
-                    st.success(f"🌿 {sel} 녹색 달성!")
-                    if st.button("🎁 보너스", use_container_width=True):
-                        st.session_state.pts+=200
-                        st.session_state.pt_history.append({"type":"earn","label":"🏘️ 동네 녹색","pts":200,"time":datetime.now().strftime("%m/%d %H:%M")})
-                        st.success("+200P!"); st.rerun()
-                elif g=="orange": st.warning("🟠 조금만 더!")
-                else: st.error("🔴 배출량을 줄여요!")
-
-    st.markdown("---")
-    st.markdown('<div class="sec-title">🛍️ 포인트 사용하기</div>', unsafe_allow_html=True)
-    spend_list=[("🛒","종량제 봉투",100),("☕","카페 쿠폰",300),("🧻","재생 화장지",150),("🥛","편의점 쿠폰",200),("🌱","환경단체 기부",50),("🐾","유기동물 기부",50)]
-    sp_cols=st.columns(6, gap="medium")
-    for i,(icon,name,cost) in enumerate(spend_list):
-        with sp_cols[i]:
-            st.markdown(f'<div class="spend-box"><span class="spend-icon">{icon}</span><div class="spend-name">{name}</div><div class="spend-pts">{cost} P</div></div>', unsafe_allow_html=True)
-            if st.button("교환", key=f"sp_{i}", use_container_width=True):
-                if st.session_state.pts>=cost:
-                    st.session_state.pts-=cost
-                    st.session_state.pt_history.append({"type":"use","label":f"{icon} {name}","pts":cost,"time":datetime.now().strftime("%m/%d %H:%M")})
-                    st.success(f"✅ {name} 교환!"); st.rerun()
-                else: st.error("포인트 부족 😢")
-
-    st.markdown("---")
-    st.markdown('<div class="sec-title">🌱 캐릭터 성장 가이드</div>', unsafe_allow_html=True)
-    lv_cols=st.columns(4, gap="large")
-    for i,li in enumerate(LEVEL_INFO):
-        done=st.session_state.pts>=li["min"]
-        with lv_cols[i]:
-            st.markdown(
-                f'<div class="lv-box {"done" if done else ""}">'
-                  f'<span style="font-size:2.5rem;display:block;margin-bottom:6px">{li["emoji"]}</span>'
-                  f'<div style="font-size:0.85rem;font-weight:800">{li["name"]}</div>'
-                  f'<div style="font-size:0.73rem;color:#AAB;margin-top:3px">{li["min"]}P~</div>'
-                  + ('<div style="color:#3ECF8E;font-size:0.75rem;font-weight:700;margin-top:4px">✅ 달성!</div>' if done else "")
-                + "</div>",
-                unsafe_allow_html=True,
-            )
-    st.markdown("<br>", unsafe_allow_html=True)
-
-
-# ════════════════════════════════════════════════════
-# PAGE 5 — 나의 현황
-# ════════════════════════════════════════════════════
-elif menu == "👤 나의 현황":
-    lv = get_lv(st.session_state.pts)
-    next_lv = next((l for l in LEVEL_INFO if l["min"] > lv["min"]), None)
-    pct = int(((st.session_state.pts-lv["min"])/(next_lv["min"]-lv["min"]))*100) if next_lv else 100
-    total_earn = sum(h["pts"] for h in st.session_state.pt_history if h["type"]=="earn")
-    total_use  = sum(h["pts"] for h in st.session_state.pt_history if h["type"]=="use")
-    act_count  = len(st.session_state.pt_history)
-    dis_count  = len(st.session_state.discharge_log)
-
-    # 프로필 히어로
-    st.markdown(
-        '<div class="profile-hero">'
-          '<div class="profile-avatar">' + lv["emoji"] + '</div>'
-          "<div style='flex:1'>"
-            f'<div class="profile-name">{st.session_state.nickname}</div>'
-            f'<div class="profile-sub">{lv["name"]}  ·  {sel} 주민  ·  가입일 {st.session_state.join_date}</div>'
-            '<div class="profile-stats">'
-              f'<div class="profile-stat"><div class="profile-stat-val">{st.session_state.pts}</div><div class="profile-stat-lbl">보유 포인트</div></div>'
-              f'<div class="profile-stat"><div class="profile-stat-val">{total_earn}</div><div class="profile-stat-lbl">총 적립 P</div></div>'
-              f'<div class="profile-stat"><div class="profile-stat-val">{act_count}</div><div class="profile-stat-lbl">활동 횟수</div></div>'
-              f'<div class="profile-stat"><div class="profile-stat-val">{dis_count}</div><div class="profile-stat-lbl">배출 인증</div></div>'
-            "</div>"
-          "</div>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-    # 닉네임 변경
-    with st.expander("✏️ 닉네임 변경"):
-        new_nick = st.text_input("닉네임", value=st.session_state.nickname, label_visibility="collapsed")
-        if st.button("저장", key="save_nick"):
-            st.session_state.nickname = new_nick; st.success("닉네임이 변경됐어요!"); st.rerun()
-
-    st.markdown("---")
-
-    # 3컬럼: XP + 포인트내역 + 배출현황
-    c_lv, c_hist, c_dis = st.columns([1, 1.3, 1.3], gap="large")
-
-    # ── 내 레벨 & XP ──
-    with c_lv:
-        st.markdown('<div class="sec-title">🌱 나의 레벨</div>', unsafe_allow_html=True)
-        for li in LEVEL_INFO:
-            done  = st.session_state.pts >= li["min"]
-            is_cur = lv["name"] == li["name"]
-            bg    = "#F0FDF6" if done else "#F7FAFC"
-            bdr   = "2px solid #3ECF8E" if is_cur else ("1px solid #CBD5E0" if done else "1px solid #E2E8F0")
-            st.markdown(
-                f'<div style="background:{bg};border:{bdr};border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px">'
-                  f'<span style="font-size:1.8rem">{li["emoji"]}</span>'
-                  "<div style='flex:1'>"
-                    f'<div style="font-size:0.85rem;font-weight:800;color:#1A202C">{li["name"]}</div>'
-                    f'<div style="font-size:0.72rem;color:#718096">{li["min"]}P~</div>'
-                  "</div>"
-                  + ('<span style="color:#3ECF8E;font-size:1rem">✅</span>' if done else '<span style="color:#CBD5E0;font-size:0.8rem">🔒</span>')
-                + "</div>",
-                unsafe_allow_html=True,
-            )
-
-        # XP 바
-        next_min_v = next_lv["min"] if next_lv else st.session_state.pts
-        remain_v   = (next_lv["min"] - st.session_state.pts) if next_lv else 0
-        st.markdown(
-            '<div class="card" style="margin-top:10px">'
-              f'<div style="font-size:0.78rem;color:#718096;margin-bottom:6px">현재 경험치</div>'
-              f'<div style="font-size:1.4rem;font-weight:800;color:#3ECF8E">{st.session_state.pts} P</div>'
-              '<div class="xp-track" style="height:10px;margin-top:8px">'
-                f'<div class="xp-fill" style="width:{pct}%"></div>'
-              "</div>"
-              + (f'<div style="font-size:0.72rem;color:#999;margin-top:4px">다음 레벨까지 {remain_v}P 남았어요</div>' if next_lv else '<div style="font-size:0.72rem;color:#3ECF8E;margin-top:4px;font-weight:700">🏆 최고 레벨 달성!</div>')
-            + "</div>",
-            unsafe_allow_html=True,
-        )
-
-    # ── 포인트 적립·사용 내역 ──
-    with c_hist:
-        st.markdown('<div class="sec-title">💳 포인트 내역</div>', unsafe_allow_html=True)
-
-        # 요약 카드
-        st.markdown(
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
-              f'<div style="background:#F0FDF6;border-radius:12px;padding:14px;text-align:center;border:1.5px solid #B7F0D5">'
-                f'<div style="font-size:1.4rem;font-weight:800;color:#3ECF8E">+{total_earn}</div>'
-                '<div style="font-size:0.72rem;color:#555;margin-top:2px">총 적립 P</div>'
-              "</div>"
-              f'<div style="background:#FFF3F3;border-radius:12px;padding:14px;text-align:center;border:1.5px solid #FFD6D6">'
-                f'<div style="font-size:1.4rem;font-weight:800;color:#FF6B6B">-{total_use}</div>'
-                '<div style="font-size:0.72rem;color:#555;margin-top:2px">총 사용 P</div>'
-              "</div>"
-            "</div>",
-            unsafe_allow_html=True,
-        )
-
-        # 내역 목록
-        history = st.session_state.pt_history
-        if not history:
-            st.markdown(
-                '<div style="text-align:center;padding:2rem;color:#A0AEC0">'
-                  '<div style="font-size:2rem;margin-bottom:8px">📭</div>'
-                  '<div style="font-size:0.85rem">아직 포인트 내역이 없어요.<br>에코 마일리지 페이지에서 포인트를 적립해 보세요!</div>'
-                "</div>",
-                unsafe_allow_html=True,
-            )
-        else:
-            for h in reversed(history[-15:]):   # 최근 15건
-                is_earn = h["type"] == "earn"
-                bg_icon = "#E8FFF5" if is_earn else "#FFF3F3"
-                icon    = "⬆️" if is_earn else "⬇️"
-                pts_str = f'+{h["pts"]}P' if is_earn else f'-{h["pts"]}P'
-                cls     = "history-plus" if is_earn else "history-minus"
-                st.markdown(
-                    '<div class="history-item">'
-                      f'<div class="history-icon" style="background:{bg_icon}">{icon}</div>'
-                      "<div style='flex:1'>"
-                        f'<div style="font-size:0.88rem;font-weight:700;color:#1A202C">{h["label"]}</div>'
-                        f'<div style="font-size:0.72rem;color:#A0AEC0">{h["time"]}</div>'
-                      "</div>"
-                      f'<div class="{cls}">{pts_str}</div>'
-                    "</div>",
-                    unsafe_allow_html=True,
-                )
-
-    # ── 나의 배출 현황 ──
-    with c_dis:
-        st.markdown('<div class="sec-title">🗑️ 나의 배출 현황</div>', unsafe_allow_html=True)
-
-        # 내 동네 배출 요약
-        if DATA_OK and sel in df_sch.index:
-            row_s = df_sch.loc[sel]
-            row_a = df_amt.loc[sel]
-            lv_c  = row_a["등급"]
-            st.markdown(
-                f'<div style="background:{CLR[lv_c]}18;border:1.5px solid {CLR[lv_c]};border-radius:14px;padding:14px 16px;margin-bottom:14px">'
-                  f'<div style="font-size:0.9rem;font-weight:800;color:#1A202C;margin-bottom:6px">📍 {sel} 현재 배출량</div>'
-                  f'<div style="font-size:1.6rem;font-weight:800;color:{CLR[lv_c]}">{row_a["1인당"]} kg/일</div>'
-                  f'<div style="font-size:0.75rem;color:#718096;margin-top:3px">{LBL[lv_c]}  ·  서울시 평균 1.09 kg/일</div>'
-                "</div>",
-                unsafe_allow_html=True,
-            )
-
-            # 배출 요일 현황
-            for icon, label, d_col, s_col, e_col in [
-                ("🗑️","일반쓰레기","생활쓰레기배출요일","생활쓰레기배출시작시각","생활쓰레기배출종료시각"),
-                ("♻️","재활용품","재활용품배출요일","재활용품배출시작시각","재활용품배출종료시각"),
-                ("🍖","음식물쓰레기","음식물쓰레기배출요일","음식물쓰레기배출시작시각","음식물쓰레기배출종료시각"),
-            ]:
-                t_s=safe(row_s[s_col]); t_e=safe(row_s[e_col])
-                st.markdown(
-                    f'<div class="discharge-row">'
-                      f'<span style="font-size:1.3rem">{icon}</span>'
-                      "<div style='flex:1'>"
-                        f'<div style="font-size:0.85rem;font-weight:800;color:#1A202C">{label}</div>'
-                        '<div style="margin-top:3px">'
-                          + day_html(row_s[d_col]) +
-                        "</div>"
-                        f'<div style="font-size:0.75rem;color:#FF6B6B;font-weight:700;margin-top:3px">⏰ {t_s}~{t_e}</div>'
-                      "</div>"
-                    "</div>",
-                    unsafe_allow_html=True,
-                )
-
-        # 인증 내역
-        st.markdown('<div style="margin-top:14px;font-size:0.9rem;font-weight:800;color:#1A202C;margin-bottom:8px">📸 배출 인증 내역</div>', unsafe_allow_html=True)
-        discharge = st.session_state.discharge_log
-        if not discharge:
-            st.markdown(
-                '<div style="text-align:center;padding:1.5rem;color:#A0AEC0">'
-                  '<div style="font-size:1.8rem;margin-bottom:6px">📸</div>'
-                  '<div style="font-size:0.82rem">아직 배출 인증 내역이 없어요.<br>에코 마일리지에서 사진을 인증해 보세요!</div>'
-                "</div>",
-                unsafe_allow_html=True,
-            )
-        else:
-            for d in reversed(discharge[-8:]):
-                st.markdown(
-                    '<div class="history-item">'
-                      '<div class="history-icon" style="background:#E8FFF5">📸</div>'
-                      "<div style='flex:1'>"
-                        f'<div style="font-size:0.85rem;font-weight:700">{d["gu"]} · {d["type"]} 배출 인증</div>'
-                        f'<div style="font-size:0.72rem;color:#A0AEC0">{d["time"]}</div>'
-                      "</div>"
-                      f'<div class="history-plus">+{d["pts"]}P</div>'
-                    "</div>",
-                    unsafe_allow_html=True,
-                )
-
-        # 구청 사이트 바로가기
-        url_gu = GU_URLS.get(sel,"#")
-        st.markdown(
-            f'<a href="{url_gu}" target="_blank" style="display:block;margin-top:14px;'
-            f'background:linear-gradient(90deg,#3ECF8E,#1AA7EC);color:white;'
-            f'padding:12px 18px;border-radius:12px;text-align:center;'
-            f'text-decoration:none;font-weight:800;font-size:0.9rem">'
-            f'🏛️ {sel}청 공식 사이트 바로가기 →</a>',
-            unsafe_allow_html=True,
-        )
-
-    st.markdown("<br>", unsafe_allow_html=True)
