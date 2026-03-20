@@ -260,44 +260,56 @@ LBL  = {"red":"🔴 경고","orange":"🟠 보통","green":"🟢 우수"}
 DAYS = ["일","월","화","수","목","금","토"]
 
 # ── 종량제 봉투 가격 데이터 (CSV에서 로드) ──
-@st.cache_data
+# ── 종량제 봉투 가격 (CSV 직접 파싱 · @st.cache_data 없음 → 캐시 오염 방지) ──
 def load_bag_prices():
-    # 모든 용량 컬럼 (1L~100L)
+    """
+    trash_bag.csv 에서 서울시 24개 구 가정용 생활쓰레기 규격봉투 가격을 추출.
+    같은 구에 행이 여러 개일 때 → 가격 항목 수가 가장 많은 행 선택.
+    사용대상: 가정용 → 기타 순으로 fallback.
+    강동구처럼 사용대상='기타'인 경우도 정상 처리.
+    """
     price_cols = ["1ℓ가격","2ℓ가격","3ℓ가격","5ℓ가격","10ℓ가격",
                   "20ℓ가격","30ℓ가격","50ℓ가격","75ℓ가격","100ℓ가격"]
     label_map  = {"1ℓ가격":"1L","2ℓ가격":"2L","3ℓ가격":"3L","5ℓ가격":"5L",
                   "10ℓ가격":"10L","20ℓ가격":"20L","30ℓ가격":"30L",
                   "50ℓ가격":"50L","75ℓ가격":"75L","100ℓ가격":"100L"}
 
-    for fname in ["trash_bag.csv","/mnt/user-data/uploads/trash_bag.csv"]:
-        if os.path.exists(fname):
-            df = pd.read_csv(fname, encoding="cp949")
+    # 업로드 경로 우선, 없으면 로컬 복사본
+    csv_path = None
+    for p in ["/mnt/user-data/uploads/trash_bag.csv", "trash_bag.csv"]:
+        if os.path.exists(p):
+            csv_path = p
             break
-    else:
+    if csv_path is None:
+        return {}
+
+    try:
+        df = pd.read_csv(csv_path, encoding="cp949")
+    except Exception:
         return {}
 
     seoul = df[df["시도명"] == "서울특별시"].copy()
+    if seoul.empty:
+        return {}
 
-    def get_prices(row):
-        """행에서 0이 아닌 가격만 추출"""
-        prices = {}
+    def row_prices(row):
+        out = {}
         for c in price_cols:
             try:
                 v = int(row[c])
-            except (ValueError, TypeError):
+            except Exception:
                 v = 0
             if v > 0:
-                prices[label_map[c]] = v
-        return prices
+                out[label_map[c]] = v
+        return out
 
     result = {}
     for gu in sorted(seoul["시군구명"].unique()):
-        best_row  = None
-        best_cnt  = 0
+        best_prices = {}
+        best_cnt    = 0
 
-        # 우선순위: 봉투종류 × 사용대상 조합으로 가장 가격 항목 많은 행 선택
-        for bag_type in ["규격봉투","재사용규격봉투"]:
-            for 대상 in ["가정용","기타",None]:
+        for bag_type in ["규격봉투", "재사용규격봉투"]:
+            for 대상 in ["가정용", "기타", None]:
                 base = seoul[
                     (seoul["시군구명"] == gu) &
                     (seoul["종량제봉투용도"] == "생활쓰레기") &
@@ -307,29 +319,25 @@ def load_bag_prices():
                     base = base[base["종량제봉투사용대상"] == 대상]
                 if base.empty:
                     continue
-                # 소각용 우선, 없으면 첫 행
+
+                # 소각용 행 우선, 없으면 전체
                 sub = base[base["종량제봉투처리방식"] == "소각용"]
-                row = sub.iloc[0] if not sub.empty else base.iloc[0]
-                cnt = sum(
-                    1 for c in price_cols
-                    if pd.notna(row[c]) and int(row[c]) > 0
-                )
-                if cnt > best_cnt:
-                    best_cnt = cnt
-                    best_row = row
+                rows_to_check = sub if not sub.empty else base
 
-            if best_row is not None and best_cnt > 0:
-                break   # 규격봉투에서 찾았으면 재사용 탐색 생략
+                # 행마다 가격 항목 수 비교 → 가장 많은 행 채택
+                for _, row in rows_to_check.iterrows():
+                    p = row_prices(row)
+                    if len(p) > best_cnt:
+                        best_cnt    = len(p)
+                        best_prices = p
 
-        if best_row is not None and best_cnt > 0:
-            result[gu] = get_prices(best_row)
+            if best_cnt > 0:
+                break  # 규격봉투에서 찾았으면 재사용봉투 탐색 불필요
+
+        if best_prices:
+            result[gu] = best_prices
 
     return result
-
-# 파일 자동 복사 후 로딩
-for _src, _dst in [("/mnt/user-data/uploads/trash_bag.csv","trash_bag.csv")]:
-    if not os.path.exists(_dst) and os.path.exists(_src):
-        shutil.copy(_src, _dst)
 
 BAG_PRICES = load_bag_prices()
 
